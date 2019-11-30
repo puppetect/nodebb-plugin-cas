@@ -1,0 +1,33 @@
+{
+  "name": "nodebb-plugin-cas",
+  "version": "0.2.3",
+  "description": "Nodebb plugin for SSO/SLO via Apereo CAS ",
+  "main": "library.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/puppetect/nodebb-plugin-cas"
+  },
+  "keywords": [
+    "nodebb",
+    "plugin",
+    "cas",
+    "sso",
+    "slo"
+  ],
+  "author": {
+    "name": "puppetect",
+    "email": "puppetect@gmail.com"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/puppetect/nodebb-plugin-cas/issues"
+  },
+  "readmeFilename": "README.md",
+  "nbbpm": {
+    "compatibility": "^1.0.0"
+  },
+  "dependencies": {
+    "es6-promise": "^4.2.4",
+    "isomorphic-fetch": "^2.2.1"
+  }
+}
