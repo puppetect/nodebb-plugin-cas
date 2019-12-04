@@ -1,8 +1,8 @@
 "use strict";
 
 var User = require.main.require('./src/user');
+var Utils = require.main.require('./src/utils')
 var Groups = require.main.require('./src/groups');
-var utils = require.main.require('./src/utils');
 var pluginJson = require('./plugin.json');
 var xml2js = module.parent.require('xml2js');
 var _ = module.parent.require('lodash');
@@ -18,9 +18,6 @@ var nodeBBUrl = pluginJson.nodeBBUrl;
 var CASServerPrefix = pluginJson.CASServerPrefix;
 var userCenterPrefix = pluginJson.userCenterPrefix;
 var plugin = {};
-var constants = Object.freeze({
-    name: 'cwy',
-});
 var sessionStore = {};
 
 plugin.init = function(params, callback){
@@ -30,23 +27,12 @@ plugin.init = function(params, callback){
         hostControllers = params.controllers;
 
     router.get('/*', function(req, res, next){
-        if(!(req.url.match(/asset/))){
-        };
         if(req.query.ticket){
             sessionStore[req.query.ticket] = req.session;
-        };
-        if(req.body.logoutRequest){
-            winston.verbose(`[SSO/SLO filter] logoutRequest=${req.query.logoutRequest}`);
         };
         next();
     });
 
-    router.post('/*', function(req, res, next){
-        if(req.url.match(/logout/)){
-            
-        };
-        next();
-    })
 
     router.get('(/api)?/register', function (req, res, next) {
         var url = `${userCenterPrefix}`;
@@ -66,18 +52,16 @@ plugin.init = function(params, callback){
         }
         var url = `${CASServerPrefix}/login?service=${nodeBBUrl}`;
         if (res.locals.isAPI) {
-            winston.verbose(`[SSO/isAPI] ${res.locals.isAPI}`);
             res.set('X-Redirect', encodeURI(url)).status(200).json({
                 external: url
             });
         } else {
-            winston.verbose(`[SSO/headers] ${JSON.stringify(req.headers)}`)
             res.redirect(url);
         }
     });
 
     router.get('/cas/login', hostMiddleware.buildHeader, function(req, res, next){
-        res.render('casLogin', {});
+        res.render('casLogin', {nextUrl: req.session.returnTo});
     });
 
     router.post('/cas/logout', function(req, res, next){
@@ -91,7 +75,6 @@ plugin.init = function(params, callback){
             callback(null, ticket);
         }], function(err, ticket){
             if(err){
-                winston.verbose(`[/cas/logout] error: ${err}`);
             }
             var session = sessionStore[ticket];
             var sessionID = session.meta.uuid;
@@ -132,7 +115,7 @@ plugin.continueLogin = function(req, username, password, next) {
         function(json, callback){
             var attributes = _.get(json, 'cas:serviceResponse.cas:authenticationSuccess.0.cas:attributes.0');
             if (!attributes) {
-                return callback(new Error("Auth failed"));
+                return callback(new Error("[[auth failed]]"));
             }
             var keys = Object.keys(attributes);
             var userInfo = {};
@@ -140,28 +123,29 @@ plugin.continueLogin = function(req, username, password, next) {
                 userInfo[key] = attributes[key][0]
             });
             var payload = {};
-            payload.oAuthid = userInfo['cas:username'];
-            payload.handle = userInfo['cas:realname'];
-            payload.email = utils.slugify(userInfo['cas:realname']) + "@forum.com";
+            payload.username = userInfo['cas:username'];
+            payload.realname = userInfo['cas:realname'];
+            payload.usertype = userInfo['cas:usertype'];
+            if(Utils.isEmailValid(userInfo['cas:email'])){
+                payload.email = userInfo['cas:email'];
+            }
             callback(null, payload);
         },
         function(payload, callback){
-            db.getObjectField(constants.name + 'Id:uid', payload.oAuthid, function (err, uid) {
+            db.getObjectField('cas_username:uid', payload.username, function (err, uid) {
                 if (err) {
                     return callback(err);
                 }
-                winston.verbose(`[SSO/ExistingUid] uid=${uid}`);
                 if (uid !== null) {
-                    // Existing User
-                    callback(null, uid);
+                    return callback(null, uid);
                 } else {
-                    // New User
+
                     var success = function (uid) {
                         // Save provider-specific information to the user
-                        User.setUserField(uid, constants.name + 'Id', payload.oAuthid);
-                        db.setObjectField(constants.name + 'Id:uid', payload.oAuthid, uid);
-    
-                        if (payload.isAdmin) {
+                        User.setUserField(uid, 'cas_username', payload.username);
+                        db.setObjectField('cas_username:uid', payload.username, uid);
+                        
+                        if (payload.usertype && payload.usertype == 1) {
                             Groups.join('administrators', uid, function (err) {
                                 callback(err, uid);
                             });
@@ -170,14 +154,14 @@ plugin.continueLogin = function(req, username, password, next) {
                         }
                     };
     
-                    User.getUidByEmail(payload.email, function (err, uid) {
+                    User.getUidByUsername(payload.realname, function (err, uid) {
                         if (err) {
                             return callback(err);
                         }
     
                         if (!uid) {
                             User.create({
-                                username: payload.handle,
+                                username: payload.realname,
                                 email: payload.email,
                             }, function (err, uid) {
                                 if (err) {
@@ -195,8 +179,9 @@ plugin.continueLogin = function(req, username, password, next) {
     ], function(err, uid){
         if (err) {
             next(new Error('[[error:invalid-username-or-password]]'));
+        } else {
+            next(null, {uid: uid}, '[[success:authentication-successful]]');
         }
-        next(null, {uid: uid}, '[[success:authentication-successful]]');
     })
 };
 
@@ -204,5 +189,7 @@ plugin.appendConfig = function (config, callback) {
     config['CASServerPrefix'] = CASServerPrefix;
 	setImmediate(callback, null, config);
 };
+
+
 
 module.exports = plugin;

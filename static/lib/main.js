@@ -20,7 +20,7 @@ $(document).ready(function () {
                 });
             })
             .fail(function (err) {
-                console.log(err);
+                app.alertError("登入失败");
             });
     }
     
