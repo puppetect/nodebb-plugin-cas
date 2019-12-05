@@ -9,7 +9,6 @@ var _ = module.parent.require('lodash');
 var nconf = module.parent.require('nconf');
 var request = module.parent.require('request');
 var async = module.parent.require('async');
-var winston = module.parent.require('winston');
 var db = require.main.require('./src/database');
 var	passport = module.parent.require('passport');
 var	passportLocal = module.parent.require('passport-local').Strategy;
@@ -60,10 +59,6 @@ plugin.init = function(params, callback){
         }
     });
 
-    router.get('/cas/login', hostMiddleware.buildHeader, function(req, res, next){
-        res.render('casLogin', {nextUrl: req.session.returnTo});
-    });
-
     router.post('/cas/logout', function(req, res, next){
         async.waterfall([function(callback){
             xml2js.parseString(req.body.logoutRequest, callback);
@@ -87,13 +82,15 @@ plugin.init = function(params, callback){
         });
     });
 
-    router.get('/api/cas/login', function(req, res, next){
+    router.get('/cas/login', function(req, res, next){
         req.body.username = req.query.ticket;
         req.body.password = "test";
+        req.body.noscript = 'true';
         next();
         }, 
         hostControllers.authentication.login
     );
+
     callback();
 };
 

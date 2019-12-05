@@ -3,7 +3,7 @@
 	"url": "https://github.com/puppetect/nodebb-plugin-cas",
   "library": "./library.js",
   "nodeBBUrl": "http://localhost:4567/cas/login",
-  "CASServerPrefix": "http://localhost:8444/cas",
+  "CASServerPrefix": "http://localhost:8443/cas",
   "userCenterPrefix": "http://localhost:8080/ctoms-v3/default/showreg",
 	"hooks": [
     { "hook": "static:app.load",
@@ -18,14 +18,7 @@
       "method": "appendConfig"
 		}
   ],
-	"staticDirs": {
-    "static": "./static"
-  },
-  "less": [
-    "static/style.less"
-  ],
   "scripts": [
-    "static/lib/main.js"
-  ],
-  "templates": "static/templates"
+    "./script.js"
+  ]
 }

@@ -1,6 +1,6 @@
 {
   "name": "nodebb-plugin-cas",
-  "version": "0.2.3",
+  "version": "1.0.0",
   "description": "Nodebb plugin for SSO/SLO via Apereo CAS ",
   "main": "library.js",
   "repository": {
